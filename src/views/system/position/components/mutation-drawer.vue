@@ -1,0 +1,94 @@
+<script setup lang="ts">
+  import { usePositionMutation } from '@/api/system/position/query';
+  import { PositionRecord } from '@/api/system/position/type';
+  import useOptions from '@/hooks/useOptions';
+  import type { FormInstance } from '@arco-design/web-vue';
+  import { ref } from 'vue';
+  import Rules from './rules';
+
+  // Props
+  const props = defineProps<{
+    record: Partial<PositionRecord>;
+  }>();
+
+  const formModel = ref<Partial<PositionRecord>>({});
+  const title = ref<string>('');
+  const visible = ref<boolean>(false);
+  const formRef = ref<FormInstance | null>(null);
+
+  const statusOptions = useOptions('system_status');
+
+  const openDrawer = () => (visible.value = true);
+  const closeDrawer = () => (visible.value = false);
+
+  // 开启后
+  const afterOpen = () => {
+    if (!!props.record.id) {
+      formModel.value = { ...props.record };
+      title.value = `更新 ${props.record.name}`;
+    } else {
+      formModel.value = { sort: 1000 };
+      title.value = '新建职位';
+    }
+  };
+  // 关闭后
+  const afterClose = () => (formModel.value = {});
+
+  // Mutation操作
+  const positionMutation = usePositionMutation(title.value);
+  const handleOk = async () => {
+    const err = await formRef.value?.validate();
+    if (!err) {
+      positionMutation.mutate(formModel.value, {
+        onSuccess: () => {
+          closeDrawer();
+        }
+      });
+    }
+  };
+
+  // 暴露 的属性
+  defineExpose({ openDrawer });
+</script>
+
+<template>
+  <a-drawer
+    :visible="visible"
+    @open="afterOpen"
+    @close="afterClose"
+    @ok="handleOk"
+    @cancel="closeDrawer"
+    width="33%"
+    :unmountOnClose="true"
+    :okLoading="positionMutation.isLoading.value"
+    :title="title"
+  >
+    <a-card :bordered="false">
+      <a-form ref="formRef" :model="formModel" layout="vertical" :rules="Rules">
+        <a-form-item label="岗位名称" field="name">
+          <a-input v-model="formModel.name" placeholder="请输入名称" />
+        </a-form-item>
+        <a-form-item label="岗位编码" field="code">
+          <a-input v-model="formModel.code" placeholder="请输入编码" />
+        </a-form-item>
+        <a-form-item label="状态" field="status">
+          <a-select
+            v-model="formModel.status"
+            allowclear
+            placeholder="请选择状态"
+            :options="statusOptions"
+          />
+        </a-form-item>
+        <a-form-item label="排序" field="sort">
+          <a-input-number
+            v-model="formModel.sort"
+            placeholder="请输入排序数值"
+          />
+        </a-form-item>
+        <a-form-item label="备注" field="remark">
+          <a-textarea v-model="formModel.remark" placeholder="请输入备注" />
+        </a-form-item>
+      </a-form>
+    </a-card>
+  </a-drawer>
+</template>
